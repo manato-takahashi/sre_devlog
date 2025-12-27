@@ -1,0 +1,30 @@
+<%= form_with model: @article do |f| %>
+  <div>
+    <%= f.label :title, "タイトル" %>
+    <%= f.text_field :title, required: true %>
+  </div>
+
+  <div>
+    <%= f.label :slug, "スラッグ（URL用）" %>
+    <%= f.text_field :slug, required: true %>
+  </div>
+
+  <div>
+    <%= f.label :body, "本文" %>
+    <%= f.text_area :body, rows: 10, required: true %>
+  </div>
+
+  <div>
+    <%= f.label :published, "公開する" %>
+    <%= f.check_box :published %>
+  </div>
+
+  <div>
+    <%= f.label :published_at, "公開日時" %>
+    <%= f.datetime_local_field :published_at %>
+  </div>
+
+  <div>
+    <%= f.submit %>
+  </div>
+<% end %>

@@ -7,4 +7,11 @@
   </div>
 
   <p><%= link_to "← 記事一覧に戻る", root_path %></p>
+
+  <% if authenticated? %>
+    <p>
+      <%= link_to "編集", edit_article_path(@article.slug) %>
+      <%= button_to "削除", article_path(@article.slug), method: :delete, data: { confirm: "本当に削除しますか？" } %>
+    </p>
+  <% end %>
 </article>
