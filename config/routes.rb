@@ -1,8 +1,9 @@
 Rails.application.routes.draw do
-  resources :articles, only: [ :index, :show, :new, :create, :edit, :update, :destroy ]
+  resources :articles, only: [ :index, :show ]
 
-  resource :session
-  resources :passwords, param: :token
+  # 認証は不要になったため無効化（将来的に必要になったら復活させる）
+  # resource :session
+  # resources :passwords, param: :token
 
   get "up" => "rails/health#show", as: :rails_health_check
 
