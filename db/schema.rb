@@ -10,13 +10,17 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_27_080729) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_28_141614) do
   create_table "articles", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
+    t.string "emoji"
     t.boolean "published"
     t.datetime "published_at"
     t.string "slug"
+    t.string "source"
+    t.string "source_url"
+    t.json "tags"
     t.string "title"
     t.datetime "updated_at", null: false
   end

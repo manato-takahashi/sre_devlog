@@ -66,3 +66,5 @@ group :test do
 end
 
 gem "css-zero", "~> 3.1"
+
+gem "commonmarker", "~> 2.6"
