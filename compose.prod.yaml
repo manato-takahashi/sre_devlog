@@ -2,4 +2,7 @@ services:
   web:
     ports:
       - "80:80"
+      - "443:443"
+    environment:
+      - TLS_DOMAIN=sre-lab.click
       
