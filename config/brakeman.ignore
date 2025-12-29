@@ -1,0 +1,10 @@
+{
+  "ignored_warnings": [
+    {
+      "fingerprint": "f07437b4607c9793d3848aea02515cbf7334a2137f555013481f19bb51aaf8c3",
+      "note": "bodyはCommonmarkerでMarkdownからHTMLに変換済み。CommonmarkerはデフォルトでXSSサニタイズを行う。lib/tasks/articles.rake 19行目参照。"
+    }
+  ],
+  "updated": "2025-12-29",
+  "brakeman_version": "7.1.2"
+}
