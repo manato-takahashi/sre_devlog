@@ -21,8 +21,12 @@
 .header-layout {
   block-size: 100dvh;
   display: grid;
-  grid-template-areas: "header" "main";
-  grid-template-rows: auto 1fr;
+  grid-template-areas: "header" "main" "footer";
+  grid-template-rows: auto 1fr auto;
+}
+
+#footer {
+  grid-area: footer;
 }
 
 .centered-layout {

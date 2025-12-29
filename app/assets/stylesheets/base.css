@@ -1,26 +1,76 @@
 :root {
-  --color-bg: light-dark(white, var(--zinc-950));
-  --color-surface: light-dark(white, var(--zinc-900));
-  --color-text: light-dark(var(--zinc-950), white);
-  --color-text-reversed: light-dark(white, var(--zinc-950));
-  --color-text-subtle: light-dark(var(--zinc-500), var(--zinc-400));
-  --color-link: light-dark(var(--blue-700), var(--blue-400));
-  --color-border-light: light-dark(var(--zinc-100), var(--zinc-800));
-  --color-border: light-dark(var(--zinc-200), var(--zinc-700));
-  --color-border-dark: light-dark(var(--zinc-400), var(--zinc-600));
-  --color-selected: light-dark(var(--sky-100), var(--sky-950));
-  --color-selected-dark: light-dark(var(--blue-300), var(--blue-800));
-  --color-highlight: light-dark(var(--yellow-200), var(--yellow-900));
+  /* ========================================
+     SRE Custom Palette - 生の色を定義
+     Light: Kindle Paper Style (目に優しいセピア寄り)
+     Dark: GitHub Dark Dimmed (洗練されたグレー)
+     ======================================== */
+  --sre-bg-light: #f4f1ea;
+  --sre-bg-dark: #22272e;
+  --sre-text-light: #3c3c3c;
+  --sre-text-dark: #adbac7;
+  --sre-text-subtle-light: #767676;
+  --sre-text-subtle-dark: #768390;
+  --sre-accent-light: #059669;
+  --sre-accent-dark: #34d399;
+  --sre-code-bg-light: #ebe8e2;
+  --sre-code-bg-dark: #2d333b;
+  --sre-border-light: #e1ddd5;
+  --sre-border-dark: #444c56;
+  --sre-card-bg-light: #fdfcfb;
+  --sre-card-bg-dark: #2d333b;
 
-  --color-primary: light-dark(var(--zinc-900), var(--zinc-50));
-  --color-secondary: light-dark(var(--zinc-100), var(--zinc-800));
-  --color-negative: light-dark(var(--red-600), var(--red-800));
-  --color-positive: light-dark(var(--green-600), var(--green-800));
+  /* ========================================
+     CSS Zero セマンティック変数を上書き
+     ======================================== */
+  --color-bg: light-dark(var(--sre-bg-light), var(--sre-bg-dark));
+  --color-surface: light-dark(
+    var(--sre-card-bg-light),
+    var(--sre-card-bg-dark)
+  );
+  --color-text: light-dark(var(--sre-text-light), var(--sre-text-dark));
+  --color-text-reversed: light-dark(
+    var(--sre-text-dark),
+    var(--sre-text-light)
+  );
+  --color-text-subtle: light-dark(
+    var(--sre-text-subtle-light),
+    var(--sre-text-subtle-dark)
+  );
+  --color-link: light-dark(var(--sre-accent-light), var(--sre-accent-dark));
+  --color-border-light: light-dark(#f5f5f5, #333333);
+  --color-border: light-dark(var(--sre-border-light), var(--sre-border-dark));
+  --color-border-dark: light-dark(#d4d4d4, #525252);
+  --color-selected: light-dark(#d1fae5, #064e3b);
+  --color-selected-dark: light-dark(#6ee7b7, #047857);
+  --color-highlight: light-dark(#fef3c7, #78350f);
+
+  /* ========================================
+     新規追加: アクセント・コード背景
+     ======================================== */
+  --color-accent: light-dark(var(--sre-accent-light), var(--sre-accent-dark));
+  --color-code-bg: light-dark(
+    var(--sre-code-bg-light),
+    var(--sre-code-bg-dark)
+  );
+
+  /* ========================================
+     プライマリ・セカンダリ・フィードバック
+     ======================================== */
+  --color-primary: light-dark(var(--sre-text-light), var(--sre-text-dark));
+  --color-secondary: light-dark(#f5f5f5, #2a2a2a);
+  --color-negative: light-dark(var(--red-600), var(--red-400));
+  --color-positive: light-dark(var(--sre-accent-light), var(--sre-accent-dark));
+
+  /* ========================================
+     Typography
+     ======================================== */
+  --font-body: "Noto Sans JP", system-ui, sans-serif;
+  --font-accent: "Fira Code", monospace;
 }
 
 * {
   border-color: var(--color-border);
-  scrollbar-color: #C1C1C1 transparent;
+  scrollbar-color: #c1c1c1 transparent;
   scrollbar-width: thin;
 }
 
@@ -31,6 +81,7 @@ html {
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
+  font-family: var(--font-body);
   font-synthesis-weight: none;
   overscroll-behavior: none;
   text-rendering: optimizeLegibility;
@@ -43,4 +94,12 @@ body {
 ::selection {
   background-color: var(--color-selected);
   color: var(--color-text);
+}
+
+a {
+  color: var(--color-link);
+}
+
+a:hover {
+  opacity: 0.8;
 }

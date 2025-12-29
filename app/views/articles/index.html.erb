@@ -1,9 +1,18 @@
-<h1>SRE Devlog</h1>
+<div class="articles-list">
+  <% @articles.each do |article| %>
+    <article class="article-card">
+      <%= link_to article_path(article.slug), class: "article-card-link" do %>
+        <header class="article-card-header">
+          <span class="article-emoji"><%= article.emoji || "📝" %></span>
+          <time class="article-date font-accent">[<%= article.published_at.strftime("%Y-%m-%d") %>]</time>
+        </header>
 
-<% @articles.each do |article| %>
-  <article>
-    <h2><%= link_to article.title, article_path(article.slug) %></h2>
-    <time><%= article.published_at.strftime("%Y-%m-%d") %></time>
-    <p><%= truncate(strip_tags(article.body), length: 100) %></p>
-  </article>
-<% end %>
+        <h2 class="article-title"><%= article.title %></h2>
+
+        <p class="article-excerpt text-subtle">
+          <%= truncate(strip_tags(article.body), length: 120) %>
+        </p>
+      <% end %>
+    </article>
+  <% end %>
+</div>
