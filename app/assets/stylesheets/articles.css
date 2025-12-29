@@ -17,9 +17,7 @@
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  transition:
-    border-color 0.2s ease,
-    transform 0.2s ease;
+  transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .article-card:hover {
@@ -116,6 +114,21 @@
   font-weight: 600;
   margin-top: 2rem;
   margin-bottom: 0.75rem;
+}
+
+.article-content h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.article-content h5 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-subtle);
 }
 
 .article-content p {
@@ -251,4 +264,49 @@
 .back-link:hover {
   opacity: 1;
   text-decoration: underline;
+}
+
+/* ========================================
+   Task List (GFM Checkbox)
+   ======================================== */
+
+.article-content ul:has(input[type="checkbox"]) {
+  list-style: none;
+  padding-left: 0;
+}
+
+.article-content li:has(input[type="checkbox"]) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.article-content input[type="checkbox"] {
+  margin-top: 0.35rem;
+  accent-color: var(--color-accent);
+}
+
+/* ========================================
+   Footnotes (GFM)
+   ======================================== */
+
+.article-content .footnotes {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.875rem;
+}
+
+.article-content .footnotes ol {
+  padding-left: 1.5rem;
+}
+
+.article-content sup a {
+  color: var(--color-accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.article-content .footnote-backref {
+  text-decoration: none;
 }

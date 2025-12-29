@@ -16,7 +16,22 @@ namespace :articles do
         parts = content.split("---", 3)
         front_matter = YAML.safe_load(parts[1], permitted_classes: [ Date ])
         body = parts[2].strip
-        html = Commonmarker.to_html(body)
+        html = Commonmarker.to_html(body,
+          options: {
+            extension: {
+              strikethrough: true,  # 取り消し線
+              table: true,          # テーブル
+              autolink: true,       # 自動リンク
+              tasklist: true,       # タスクリスト
+              footnotes: true       # 脚注
+            }
+          },
+          plugins: {
+            syntax_highlighter: {
+              theme: "base16-ocean.dark"
+            }
+          }
+        )
 
         # DB保存処理
         article = Article.find_or_initialize_by(slug: slug)
