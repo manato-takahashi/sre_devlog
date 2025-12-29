@@ -4,9 +4,9 @@ services:
     environment:
       - RAILS_MASTER_KEY=${RAILS_MASTER_KEY}
     volumes:
-      - ./storage:/rails/db
-      - db_data:/rails/db
+      - storage_data:/rails/storage   # SQLite永続化
+      - ./articles:/rails/articles    # 開発時の記事即時反映
     restart: unless-stopped
 
 volumes:
-  db_data:
+  storage_data:

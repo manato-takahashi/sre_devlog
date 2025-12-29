@@ -5,4 +5,9 @@ services:
       - "443:443"
     environment:
       - TLS_DOMAIN=sre-lab.click
+    volumes:
+      - storage_data:/rails/storage   # SQLite永続化のみ（バインドマウントは使わない）
+
+volumes:
+  storage_data:
       
