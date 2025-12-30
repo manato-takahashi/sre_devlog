@@ -33,6 +33,18 @@ namespace :articles do
           }
         )
 
+        # コードブロックの後処理（Stimulus用data属性追加）
+        doc = Nokogiri::HTML.fragment(html)
+        doc.css("pre").each do |pre|
+          lang = pre["lang"]
+
+          # bashはターミナル風にする
+          pre["data-terminal"] = "true" if lang == "bash"
+
+          pre["data-controller"] = "code-block"
+        end
+        html = doc.to_html
+
         # DB保存処理
         article = Article.find_or_initialize_by(slug: slug)
         article.assign_attributes(

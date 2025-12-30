@@ -205,6 +205,16 @@ Dockerはコンテナ技術[^2]を利用した仮想化プラットフォーム�
 | `development` | 3000 | ホットリロード有効 |
 | `production` | 80/443 | SSL必須 |
 
+## ターミナル風コードブロック
+
+bashコードブロックは自動的にターミナル風UIになります。
+
+```bash
+docker compose up -d
+kubectl get pods -n production
+curl -X GET https://api.example.com/health
+```
+
 ## おわり
 
 以上がMarkdown記法のテストです。すべての要素が正しく表示されていることを確認してください。
