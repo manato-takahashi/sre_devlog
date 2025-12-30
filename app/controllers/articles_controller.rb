@@ -1,12 +1,21 @@
 class ArticlesController < ApplicationController
-  allow_unauthenticated_access only: [ :index, :show ]
-  before_action :set_article, only: [ :show, :edit, :update, :destroy ]
+  allow_unauthenticated_access only: [ :index, :show, :deploy ]
+  before_action :set_article, only: [ :show, :edit, :update, :destroy, :deploy ]
 
   def index
     @articles = Article.where(published: true).order(published_at: :desc)
   end
 
   def show
+  end
+
+  def deploy
+    @article.increment!(:deploys_count)
+
+    respond_to do |format|
+      format.turbo_stream
+      format.html { redirect_to @article }
+    end
   end
 
   def new

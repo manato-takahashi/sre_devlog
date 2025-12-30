@@ -10,10 +10,11 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_12_28_141614) do
+ActiveRecord::Schema[8.1].define(version: 2025_12_30_071129) do
   create_table "articles", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
+    t.integer "deploys_count", default: 0
     t.string "emoji"
     t.boolean "published"
     t.datetime "published_at"

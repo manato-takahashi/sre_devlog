@@ -12,6 +12,15 @@
     <%= raw(@article.body) %>
   </div>
 
+  <div class="deploy-section" data-controller="deploy">
+    <%= button_to deploy_article_path(@article),
+        method: :post,
+        class: "deploy-button",
+        data: { action: "click->deploy#launch" } do %>
+      🚀 Deploy <span id="deploy-count" class="deploy-count"><%= @article.deploys_count %></span>
+    <% end %>
+  </div>
+
   <footer class="article-detail-footer">
     <%= link_to root_path, class: "back-link font-accent" do %>
       > cd ~
