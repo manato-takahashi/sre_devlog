@@ -1,5 +1,6 @@
 services:
   web:
+    image: 085980782221.dkr.ecr.ap-northeast-1.amazonaws.com/sre-devlog:latest
     ports:
       - "80:80"
       - "443:443"
