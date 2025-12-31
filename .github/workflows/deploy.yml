@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'articles/**'
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -22,13 +23,18 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ap-northeast-1
 
-      - name: Run rake task via SSM
+      - name: Run deploy via SSM
         id: ssm
         run: |
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
-            --parameters 'commands=["cd /home/ubuntu/sre_devlog && git pull && docker compose -f compose.yaml -f compose.prod.yaml exec -T web bin/rake articles:sync"]' \
+            --parameters 'commands=[
+              "cd /home/ubuntu/sre_devlog",
+              "git pull",
+              "docker compose -f compose.yaml -f compose.prod.yaml exec -T web bin/rails db:migrate",
+              "docker compose -f compose.yaml -f compose.prod.yaml exec -T web bin/rake articles:sync"
+            ]' \
             --query 'Command.CommandId' \
             --output text)
           
