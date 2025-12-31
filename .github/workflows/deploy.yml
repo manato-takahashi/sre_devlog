@@ -30,10 +30,9 @@ jobs:
             --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
-              "cd /home/ubuntu/sre_devlog",
-              "git pull",
-              "docker compose -f compose.yaml -f compose.prod.yaml exec -T web bin/rails db:migrate",
-              "docker compose -f compose.yaml -f compose.prod.yaml exec -T web bin/rake articles:sync"
+              "sudo -u ubuntu bash -c \"cd /home/ubuntu/sre_devlog && git pull\"",
+              "cd /home/ubuntu/sre_devlog && docker compose -f compose.yaml -f compose.prod.yaml exec -T web bin/rails db:migrate",
+              "cd /home/ubuntu/sre_devlog && docker compose -f compose.yaml -f compose.prod.yaml exec -T web bin/rake articles:sync"
             ]' \
             --query 'Command.CommandId' \
             --output text)
