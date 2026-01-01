@@ -51,7 +51,8 @@ COPY . .
 RUN bundle exec bootsnap precompile -j 1 app/ lib/
 
 # Precompiling assets for production without requiring secret RAILS_MASTER_KEY
-RUN SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
+# Disable jemalloc during precompile to avoid potential ARM-related crashes
+RUN LD_PRELOAD="" SECRET_KEY_BASE_DUMMY=1 ./bin/rails assets:precompile
 
 
 
