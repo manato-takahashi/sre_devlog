@@ -16,22 +16,30 @@ namespace :articles do
         parts = content.split("---", 3)
         front_matter = YAML.safe_load(parts[1], permitted_classes: [ Date ])
         body = parts[2].strip
-        html = Commonmarker.to_html(body,
-          options: {
-            extension: {
-              strikethrough: true,  # 取り消し線
-              table: true,          # テーブル
-              autolink: true,       # 自動リンク
-              tasklist: true,       # タスクリスト
-              footnotes: true       # 脚注
+
+        # 変換済み HTML ファイルがあればそれを使う (Zenn記法対応)
+        html_path = path.sub(/\.md$/, ".html")
+        if File.exist?(html_path)
+          html = File.read(html_path)
+        else
+          # なければ従来通り Commonmarker で変換
+          html = Commonmarker.to_html(body,
+            options: {
+              extension: {
+                strikethrough: true,  # 取り消し線
+                table: true,          # テーブル
+                autolink: true,       # 自動リンク
+                tasklist: true,       # タスクリスト
+                footnotes: true       # 脚注
+              }
+            },
+            plugins: {
+              syntax_highlighter: {
+                theme: "base16-ocean.dark"
+              }
             }
-          },
-          plugins: {
-            syntax_highlighter: {
-              theme: "base16-ocean.dark"
-            }
-          }
-        )
+          )
+        end
 
         # コードブロックの後処理（Stimulus用data属性追加）
         doc = Nokogiri::HTML.fragment(html)
