@@ -33,14 +33,29 @@ jobs:
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      # QEMU をセットアップ（ARM エミュレーション用）
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # Docker Buildx をセットアップ（マルチアーキテクチャビルド用）
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       # Docker イメージをビルドして ECR に push
       # - latest: 常に最新を指す
       # - commit SHA: ロールバック用に特定バージョンを保持
+      # - platform: ARM64 (EC2 が Graviton/ARM のため)
       - name: Build and push Docker image
-        run: |
-          docker build -t ${{ env.ECR_REPOSITORY }}:latest -t ${{ env.ECR_REPOSITORY }}:${{ github.sha }} .
-          docker push ${{ env.ECR_REPOSITORY }}:latest
-          docker push ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ env.ECR_REPOSITORY }}:latest
+            ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       # EC2 に SSM 経由でデプロイ指示
       # 1. ECR にログイン
@@ -57,7 +72,7 @@ jobs:
             --parameters 'commands=[
               "sudo -u ubuntu bash -c '\''cd /home/ubuntu/sre_devlog && git pull'\''",
               "aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin 085980782221.dkr.ecr.ap-northeast-1.amazonaws.com",
-              "cd /home/ubuntu/sre_devlog && docker compose -f compose.yaml -f compose.prod.yaml pull",
+              "cd /home/ubuntu/sre_devlog && docker compose -f compose.yaml -f compose.prod.yaml pull --quiet",
               "cd /home/ubuntu/sre_devlog && docker compose -f compose.yaml -f compose.prod.yaml up -d",
               "cd /home/ubuntu/sre_devlog && docker compose -f compose.yaml -f compose.prod.yaml exec -T web bin/rails db:migrate",
               "cd /home/ubuntu/sre_devlog && docker compose -f compose.yaml -f compose.prod.yaml exec -T web bin/rake articles:sync"
