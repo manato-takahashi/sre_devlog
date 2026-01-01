@@ -30,6 +30,11 @@
 
 /public/assets
 
+# Node.js (for Grover/Puppeteer in development)
+/node_modules/
+/package.json
+/package-lock.json
+
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 

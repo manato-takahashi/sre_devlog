@@ -1,3 +1,22 @@
+<% content_for :title do %>
+  <%= @article.title %> | > SRE Devlog
+<% end %>
+
+<% content_for :ogp_meta_tags do %>
+  <meta property="og:title" content="<%= @article.title %>">
+  <meta property="og:description" content="<%= article_description(@article) %>">
+  <meta property="og:image" content="<%= ogp_image_url(@article) %>">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="> SRE Devlog">
+  <meta property="og:url" content="<%= request.original_url %>">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="<%= @article.title %>">
+  <meta name="twitter:description" content="<%= article_description(@article) %>">
+  <meta name="twitter:image" content="<%= ogp_image_url(@article) %>">
+<% end %>
+
 <% content_for :breadcrumb do %>
   ~/sre_devlog/articles/<%= @article.slug %> >
 <% end %>

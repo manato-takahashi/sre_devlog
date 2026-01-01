@@ -57,6 +57,9 @@ end
 group :development do
   # Use console on exceptions pages [https://github.com/rails/web-console]
   gem "web-console"
+
+  # OGP image generation using Puppeteer [https://github.com/Studiosity/grover]
+  gem "grover", "~> 1.2"
 end
 
 group :test do

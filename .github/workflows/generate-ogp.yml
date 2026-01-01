@@ -1,0 +1,61 @@
+name: Generate OGP Images
+
+on:
+  push:
+    paths:
+      - 'articles/**'
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install fonts for emoji and Japanese
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-color-emoji fonts-noto-cjk
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Puppeteer
+        run: npm install puppeteer
+
+      - name: Sync articles to database
+        run: bundle exec rake articles:sync
+
+      - name: Generate OGP images
+        run: bundle exec rake ogp:generate
+
+      - name: Check for changes
+        id: git-check
+        run: |
+          git add public/ogp/
+          if git diff --staged --quiet; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit and push
+        if: steps.git-check.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -m "Generate OGP images
+
+          [skip ci]"
+          git push

@@ -90,3 +90,48 @@ namespace :articles do
     end
   end
 end
+
+namespace :ogp do
+  desc "Generate OGP images for all published articles (skip existing)"
+  task generate: :environment do
+    articles = Article.where(published: true)
+    puts "Checking OGP images for #{articles.count} article(s)"
+
+    generated = 0
+    skipped = 0
+
+    articles.find_each do |article|
+      generator = OgpImageGenerator.new(article)
+      if generator.exists?
+        puts "  ⏩ Exists: #{article.slug}"
+        skipped += 1
+      else
+        generator.generate
+        puts "  ✨ Generated: #{article.slug}"
+        generated += 1
+      end
+    end
+
+    puts "Done! Generated: #{generated}, Skipped: #{skipped}"
+  end
+
+  desc "Force regenerate OGP images for all published articles"
+  task regenerate: :environment do
+    articles = Article.where(published: true)
+    puts "Regenerating OGP images for #{articles.count} article(s)"
+
+    articles.find_each do |article|
+      OgpImageGenerator.new(article).generate
+      puts "  ✨ Generated: #{article.slug}"
+    end
+
+    puts "Done!"
+  end
+
+  desc "Generate OGP image for a single article"
+  task :generate_one, [ :slug ] => :environment do |_t, args|
+    article = Article.find_by!(slug: args[:slug])
+    OgpImageGenerator.new(article).generate
+    puts "Generated OGP image for: #{article.slug}"
+  end
+end

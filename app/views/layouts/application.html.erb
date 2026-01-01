@@ -8,6 +8,17 @@
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
 
+    <%# OGP Meta Tags %>
+    <%= yield :ogp_meta_tags %>
+    <% unless content_for?(:ogp_meta_tags) %>
+      <meta property="og:site_name" content="> SRE Devlog">
+      <meta property="og:type" content="website">
+      <meta property="og:title" content="> SRE Devlog">
+      <meta property="og:description" content="SRE と運用の現場からの知見を共有するブログ">
+      <meta property="og:image" content="<%= request.base_url %>/icon.png">
+      <meta name="twitter:card" content="summary">
+    <% end %>
+
     <%= yield :head %>
 
     <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
