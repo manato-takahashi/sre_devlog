@@ -468,3 +468,92 @@
     transform: translateX(-50%) translateY(-30px);
   }
 }
+
+/* ========================================
+   Zenn Message Boxes (:::message)
+   ======================================== */
+
+.article-content .msg {
+  display: flex;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border-radius: 6px;
+  background-color: var(--color-code-bg);
+  border-left: 3px solid var(--color-accent);
+}
+
+.article-content .msg .msg-symbol {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--color-bg);
+  background-color: var(--color-accent);
+  border-radius: 50%;
+}
+
+.article-content .msg .msg-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.article-content .msg .msg-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Alert variant (:::message alert) */
+.article-content .msg.alert {
+  border-left-color: #ef4444;
+}
+
+.article-content .msg.alert .msg-symbol {
+  background-color: #ef4444;
+}
+
+/* ========================================
+   Zenn Details (:::details)
+   ======================================== */
+
+.article-content details {
+  margin: 1.5rem 0;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.article-content details summary {
+  padding: 0.75rem 1rem;
+  background-color: var(--color-code-bg);
+  cursor: pointer;
+  font-weight: 500;
+  list-style: none;
+}
+
+.article-content details summary::-webkit-details-marker {
+  display: none;
+}
+
+.article-content details summary::before {
+  content: "▶";
+  display: inline-block;
+  margin-right: 0.5rem;
+  font-size: 0.75rem;
+  transition: transform 0.2s ease;
+}
+
+.article-content details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.article-content details .details-content {
+  padding: 1rem;
+}
+
+.article-content details .details-content p:last-child {
+  margin-bottom: 0;
+}
