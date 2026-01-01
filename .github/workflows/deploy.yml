@@ -42,11 +42,13 @@ jobs:
           docker push ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
       # EC2 に SSM 経由でデプロイ指示
-      # 1. ECR にログイン
-      # 2. 最新イメージを pull
-      # 3. コンテナを再起動
-      # 4. DB マイグレーション
-      # 5. 記事同期
+      # 1. Git pull
+      # 2. ECR にログイン
+      # 3. 古い Docker イメージを削除（ディスク容量確保）
+      # 4. 最新イメージを pull
+      # 5. コンテナを再起動
+      # 6. DB マイグレーション
+      # 7. 記事同期
       - name: Deploy to EC2 via SSM
         id: ssm
         run: |
@@ -56,6 +58,7 @@ jobs:
             --parameters 'commands=[
               "sudo -u ubuntu bash -c '\''cd /home/ubuntu/sre_devlog && git pull'\''",
               "aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin 085980782221.dkr.ecr.ap-northeast-1.amazonaws.com",
+              "docker image prune -a -f --filter \"until=24h\"",
               "cd /home/ubuntu/sre_devlog && docker compose -f compose.yaml -f compose.prod.yaml pull --quiet",
               "cd /home/ubuntu/sre_devlog && docker compose -f compose.yaml -f compose.prod.yaml up -d",
               "cd /home/ubuntu/sre_devlog && docker compose -f compose.yaml -f compose.prod.yaml exec -T web bin/rails db:migrate",
