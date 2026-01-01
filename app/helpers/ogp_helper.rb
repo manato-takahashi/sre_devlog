@@ -11,6 +11,6 @@ module OgpHelper
   end
 
   def article_description(article)
-    truncate(strip_tags(article.body), length: 160)
+    article.title
   end
 end
