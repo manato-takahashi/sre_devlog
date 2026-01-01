@@ -55,7 +55,7 @@ jobs:
             --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
-              "cd /home/ubuntu/sre_devlog && git pull",
+              "sudo -u ubuntu bash -c '\''cd /home/ubuntu/sre_devlog && git pull'\''",
               "aws ecr get-login-password --region ap-northeast-1 | docker login --username AWS --password-stdin 085980782221.dkr.ecr.ap-northeast-1.amazonaws.com",
               "cd /home/ubuntu/sre_devlog && docker compose -f compose.yaml -f compose.prod.yaml pull",
               "cd /home/ubuntu/sre_devlog && docker compose -f compose.yaml -f compose.prod.yaml up -d",
