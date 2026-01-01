@@ -1,15 +1,12 @@
 ---
-title: Terraform + Let's Encryptで学ぶ、HTTPS環境構築の全体像
-emoji: "\U0001F512"
-tags:
-- terraform
-- nginx
-- letsencrypt
-- aws
+title: "Terraform + Let's Encryptで学ぶ、HTTPS環境構築の全体像"
+emoji: "🔒"
+tags: ["terraform", "nginx", "letsencrypt", "aws"]
 published: true
-published_at: '2025-12-07'
-source: zenn
-source_url: https://zenn.dev/manamana/articles/terraform-letsencrypt-https-setup
+published_at: "2025-12-07"
+source: "zenn"
+source_url: "https://zenn.dev/manamana/articles/terraform-letsencrypt-https-setup"
+html_body: "true"
 ---
 
 ## 結論（TL;DR）

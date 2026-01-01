@@ -1,0 +1,53 @@
+<h2 id="%E6%83%B3%E5%AE%9A%E8%AA%AD%E8%80%85" data-line="0" class="code-line"><a class="header-anchor-link" href="#%E6%83%B3%E5%AE%9A%E8%AA%AD%E8%80%85" aria-hidden="true"></a> 想定読者</h2>
+<ul data-line="2" class="code-line">
+<li data-line="2" class="code-line">CDN について知りたい駆け出しエンジニア</li>
+<li data-line="3" class="code-line">CDN の仕組みについて整理したいエンジニア</li>
+</ul>
+<h2 id="cdn-%E3%81%A8%E3%81%AF" data-line="5" class="code-line"><a class="header-anchor-link" href="#cdn-%E3%81%A8%E3%81%AF" aria-hidden="true"></a> CDN とは</h2>
+<p data-line="7" class="code-line">Content Delivery Network の略で、Web 上のコンテンツを効率よく、スピーディに配信するために作られた仕組みのこと。CDN はユーザーから直接見える形で存在しているものではないが、身近なサービスを裏側から支える重要な役割を担っている</p>
+<h2 id="cdn-%E3%81%AE%E3%82%B3%E3%83%B3%E3%82%BB%E3%83%97%E3%83%88" data-line="9" class="code-line"><a class="header-anchor-link" href="#cdn-%E3%81%AE%E3%82%B3%E3%83%B3%E3%82%BB%E3%83%97%E3%83%88" aria-hidden="true"></a> CDN のコンセプト</h2>
+<p data-line="11" class="code-line">CDN は Web 上のコンテンツ（静的ファイルや画像など）を毎回元のサーバーから取得する代わりに、世界中に配置されたエッジサーバー（キャッシュサーバー）からコンテンツのキャッシュを配信し、取得できるようにするもの</p>
+<h2 id="cdn-%E3%81%AE%E4%BB%95%E7%B5%84%E3%81%BF" data-line="13" class="code-line"><a class="header-anchor-link" href="#cdn-%E3%81%AE%E4%BB%95%E7%B5%84%E3%81%BF" aria-hidden="true"></a> CDN の仕組み</h2>
+<p data-line="15" class="code-line">ここからは、CDN の仕組みを実際に順を追って説明していく ↓</p>
+<p data-line="17" class="code-line">まず、CDN はユーザーとオリジンサーバーの間に配置される形で展開され、CDN 展開直後はオリジンサーバーのみがコンテンツ（静的ファイルや画像のこと、ここでは仮に <code>content.png</code> とする）を持っている</p>
+<p data-line="19" class="code-line">オリジンサーバーはサイトの開発者が用意している、Web サイトやサービスを提供する大本のサーバーのことで、CDN（エッジサーバー、キャッシュサーバー）と区別するためにオリジンサーバーと呼ぶ<br />
+<img src="/images/user_cdn_origin.png" alt="ユーザー、CDN（エッジサーバー）、オリジンサーバーの繋がり" /></p>
+<hr data-line="22" class="code-line" />
+<p data-line="24" class="code-line">CDN を展開した直後はコンテンツはオリジンサーバーのみが持っているので、最初のアクセス時は以下のような流れになる</p>
+<ol data-line="26" class="code-line">
+<li data-line="26" class="code-line">ユーザーがエッジサーバーに<code>content.png</code>をリクエスト</li>
+<li data-line="27" class="code-line">エッジサーバーがオリジンサーバーに<code>content.png</code>をリクエスト</li>
+<li data-line="28" class="code-line">オリジンサーバーがエッジサーバーに<code>content.png</code>を返送</li>
+<li data-line="29" class="code-line">エッジサーバーがユーザーに<code>content.png</code>を返送</li>
+</ol>
+<p data-line="31" class="code-line">そしてこの、エッジサーバーがユーザーにコンテンツを返送するところで、エッジサーバーは同時に<code>content.png</code>をキャッシュすることも行う<br />
+<img src="/images/cdn_cache_timing.png" alt="CDNがキャッシュするタイミングの画像" /></p>
+<hr data-line="34" class="code-line" />
+<p data-line="36" class="code-line">次に、別のユーザーがアクセスしてきたときのことを考える<br />
+この時は先ほどとは違って、エッジサーバーがコンテンツのキャッシュ（一時保存データ）を持っているので、オリジンサーバーに問い合わせることなく、エッジサーバーが代理でコンテンツを返送する<br />
+<img src="/images/cdn_cache_response.png" alt="CDNがキャッシュを代理でレスポンスする画像" /></p>
+<hr data-line="40" class="code-line" />
+<h2 id="cdn-%E3%81%AE%E4%BB%95%E7%B5%84%E3%81%BF%E8%A3%9C%E8%B6%B3" data-line="42" class="code-line"><a class="header-anchor-link" href="#cdn-%E3%81%AE%E4%BB%95%E7%B5%84%E3%81%BF%E8%A3%9C%E8%B6%B3" aria-hidden="true"></a> CDN の仕組み補足</h2>
+<h3 id="%E3%82%AD%E3%83%A3%E3%83%83%E3%82%B7%E3%83%A5%E3%81%AE%E6%9C%89%E5%8A%B9%E6%9C%9F%E9%99%90%EF%BC%88ttl%EF%BC%89%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6" data-line="44" class="code-line"><a class="header-anchor-link" href="#%E3%82%AD%E3%83%A3%E3%83%83%E3%82%B7%E3%83%A5%E3%81%AE%E6%9C%89%E5%8A%B9%E6%9C%9F%E9%99%90%EF%BC%88ttl%EF%BC%89%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6" aria-hidden="true"></a> キャッシュの有効期限（TTL）について</h3>
+<p data-line="46" class="code-line">CDN では通常、TTL（Time to Live）という、コンテンツをキャッシュしておく期間（一時保存しておく期間）を設定することができる</p>
+<aside class="msg message"><span class="msg-symbol">!</span><div class="msg-content"><p data-line="49" class="code-line">TTL は秒単位で設定でき、30 秒、3600 秒（1 時間）、86400 秒（24 時間）など好きな風にカスタマイズして設定できる</p>
+</div></aside>
+<h3 id="%E3%82%AD%E3%83%A3%E3%83%83%E3%82%B7%E3%83%A5%E3%83%92%E3%83%83%E3%83%88%E7%8E%87%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6" data-line="52" class="code-line"><a class="header-anchor-link" href="#%E3%82%AD%E3%83%A3%E3%83%83%E3%82%B7%E3%83%A5%E3%83%92%E3%83%83%E3%83%88%E7%8E%87%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6" aria-hidden="true"></a> キャッシュヒット率について</h3>
+<p data-line="54" class="code-line">CDN（エッジサーバー）にアクセスしたときに、リクエストしたオブジェクトがキャッシュ（一時保存）から提供される割合のこと</p>
+<aside class="msg message"><span class="msg-symbol">!</span><div class="msg-content"><p data-line="57" class="code-line">→ つまり、キャッシュヒット率が高いほど CDN（エッジサーバー）のみで処理が完結するので、オリジンサーバーへの負荷を軽減することができるし、キャッシュを利用できるのでレスポンスも早い</p>
+</div></aside>
+<h3 id="%E3%82%AD%E3%83%A3%E3%83%83%E3%82%B7%E3%83%A5%E3%82%AF%E3%83%AA%E3%82%A2%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6" data-line="60" class="code-line"><a class="header-anchor-link" href="#%E3%82%AD%E3%83%A3%E3%83%83%E3%82%B7%E3%83%A5%E3%82%AF%E3%83%AA%E3%82%A2%E3%81%AB%E3%81%A4%E3%81%84%E3%81%A6" aria-hidden="true"></a> キャッシュクリアについて</h3>
+<p data-line="62" class="code-line">CDN のキャッシュに保存されたデータは、TTL が経過するかキャッシュクリアを行わないと消えない</p>
+<aside class="msg message"><span class="msg-symbol">!</span><div class="msg-content"><p data-line="65" class="code-line">→ そのため、キャッシュが残っている状態で新しいコンテンツに更新したとしても、以前のキャッシュデータを参照してしまって新しいコンテンツデータを取得できない！</p>
+<p data-line="67" class="code-line">→ そのように新しいコンテンツに更新した場合は CDN のキャッシュクリアを行う必要がある</p>
+</div></aside>
+<h2 id="%E3%81%BE%E3%81%A8%E3%82%81" data-line="70" class="code-line"><a class="header-anchor-link" href="#%E3%81%BE%E3%81%A8%E3%82%81" aria-hidden="true"></a> まとめ</h2>
+<aside class="msg message"><span class="msg-symbol">!</span><div class="msg-content"><h3 id="cdn-%E3%82%92%E4%BD%BF%E3%81%86%E3%83%A1%E3%83%AA%E3%83%83%E3%83%88" data-line="74" class="code-line"><a class="header-anchor-link" href="#cdn-%E3%82%92%E4%BD%BF%E3%81%86%E3%83%A1%E3%83%AA%E3%83%83%E3%83%88" aria-hidden="true"></a> CDN を使うメリット</h3>
+<ul data-line="76" class="code-line">
+<li data-line="76" class="code-line">オリジンサーバーへの負荷を軽減することができる</li>
+<li data-line="77" class="code-line">ユーザーに地理的に近いサーバーを利用し、キャッシュされたコンテンツをエッジサーバーが代理で返送することで、レスポンスが早い</li>
+</ul>
+</div></aside>
+<h2 id="%E3%81%8A%E3%81%BE%E3%81%91" data-line="80" class="code-line"><a class="header-anchor-link" href="#%E3%81%8A%E3%81%BE%E3%81%91" aria-hidden="true"></a> おまけ</h2>
+<p data-line="82" class="code-line">CDN は画像などの静的アセットの配信以外にも静的サイトの配信としても利用することができる<br />
+その場合は、Amazon S3 というサービスを合わせて利用することが多い</p>

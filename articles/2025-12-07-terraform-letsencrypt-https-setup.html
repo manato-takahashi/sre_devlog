@@ -1,0 +1,341 @@
+<h2 id="%E7%B5%90%E8%AB%96%EF%BC%88tl%3Bdr%EF%BC%89" data-line="0" class="code-line"><a class="header-anchor-link" href="#%E7%B5%90%E8%AB%96%EF%BC%88tl%3Bdr%EF%BC%89" aria-hidden="true"></a> 結論（TL;DR）</h2>
+<p data-line="2" class="code-line">nginx + certbot で HTTPS 化する流れを理解した。certbot が nginx 設定を自動で書き換えてくれるので、手順自体はシンプル。ポート80を開けておく必要があるのは Let's Encrypt の認証のため。</p>
+<hr data-line="4" class="code-line" />
+<h2 id="1.-%E3%81%AF%E3%81%98%E3%82%81%E3%81%AB" data-line="6" class="code-line"><a class="header-anchor-link" href="#1.-%E3%81%AF%E3%81%98%E3%82%81%E3%81%AB" aria-hidden="true"></a> 1. はじめに</h2>
+<h3 id="%E4%BD%9C%E3%82%8B%E3%82%82%E3%81%AE" data-line="8" class="code-line"><a class="header-anchor-link" href="#%E4%BD%9C%E3%82%8B%E3%82%82%E3%81%AE" aria-hidden="true"></a> 作るもの</h3>
+<div class="code-block-container"><pre><code class="code-line" data-line="10">ブラウザ
+  ↓ HTTPS (443)
+nginx（SSL終端 + リバースプロキシ）
+  ↓ HTTP (5000)
+Redash（Docker Compose）
+</code></pre></div><p data-line="18" class="code-line">ドメインは Route 53 で取得、インフラは Terraform で管理、証明書は Let's Encrypt で無料取得。</p>
+<h3 id="%E3%81%AA%E3%81%9C%E3%81%93%E3%81%AE%E6%A7%8B%E6%88%90%E3%81%8B" data-line="20" class="code-line"><a class="header-anchor-link" href="#%E3%81%AA%E3%81%9C%E3%81%93%E3%81%AE%E6%A7%8B%E6%88%90%E3%81%8B" aria-hidden="true"></a> なぜこの構成か</h3>
+<p data-line="22" class="code-line">「HTTPS化」はよく出てくるタスクだけど、実際に手を動かさないと理解しにくい。今回は学習目的で、以下を一通り体験する：</p>
+<ul data-line="24" class="code-line">
+<li data-line="24" class="code-line">Terraform でのインフラ構築（EC2, VPC, Route 53）</li>
+<li data-line="25" class="code-line">nginx のリバースプロキシ設定</li>
+<li data-line="26" class="code-line">certbot による証明書取得の流れ</li>
+</ul>
+<p data-line="28" class="code-line">本番運用なら ALB + ACM を使う方がシンプルだが、「中で何が起きてるか」を理解するにはこの構成が最適。</p>
+<hr data-line="30" class="code-line" />
+<h2 id="2.-%E5%85%A8%E4%BD%93%E5%83%8F%E3%82%92%E7%90%86%E8%A7%A3%E3%81%99%E3%82%8B" data-line="32" class="code-line"><a class="header-anchor-link" href="#2.-%E5%85%A8%E4%BD%93%E5%83%8F%E3%82%92%E7%90%86%E8%A7%A3%E3%81%99%E3%82%8B" aria-hidden="true"></a> 2. 全体像を理解する</h2>
+<h3 id="http-vs-https" data-line="34" class="code-line"><a class="header-anchor-link" href="#http-vs-https" aria-hidden="true"></a> HTTP vs HTTPS</h3>
+<table data-line="36" class="code-line">
+<thead data-line="36" class="code-line">
+<tr data-line="36" class="code-line">
+<th></th>
+<th>HTTP</th>
+<th>HTTPS</th>
+</tr>
+</thead>
+<tbody data-line="38" class="code-line">
+<tr data-line="38" class="code-line">
+<td>ポート</td>
+<td>80</td>
+<td>443</td>
+</tr>
+<tr data-line="39" class="code-line">
+<td>通信</td>
+<td>平文</td>
+<td>暗号化</td>
+</tr>
+<tr data-line="40" class="code-line">
+<td>証明書</td>
+<td>不要</td>
+<td>必要</td>
+</tr>
+</tbody>
+</table>
+<p data-line="42" class="code-line">HTTPS = HTTP + TLS（暗号化レイヤー）。証明書がないとブラウザが「安全ではありません」と警告を出す。</p>
+<h3 id="nginx-%E3%81%AE%E5%BD%B9%E5%89%B2%EF%BC%9A%E3%83%AA%E3%83%90%E3%83%BC%E3%82%B9%E3%83%97%E3%83%AD%E3%82%AD%E3%82%B7" data-line="44" class="code-line"><a class="header-anchor-link" href="#nginx-%E3%81%AE%E5%BD%B9%E5%89%B2%EF%BC%9A%E3%83%AA%E3%83%90%E3%83%BC%E3%82%B9%E3%83%97%E3%83%AD%E3%82%AD%E3%82%B7" aria-hidden="true"></a> nginx の役割：リバースプロキシ</h3>
+<p data-line="46" class="code-line">Redash 自体は HTTPS に対応していない。そこで nginx を「受付係」として前に置く：</p>
+<div class="code-block-container"><pre><code class="code-line" data-line="48">ブラウザ → nginx（HTTPS受付、証明書処理）→ Redash（HTTP）
+</code></pre></div><p data-line="52" class="code-line">nginx が暗号化/復号化を担当し、Redash には普通の HTTP で転送する。この構成を「SSL終端」と呼ぶ。</p>
+<h3 id="let's-encrypt-%E3%81%AE%E4%BB%95%E7%B5%84%E3%81%BF" data-line="54" class="code-line"><a class="header-anchor-link" href="#let's-encrypt-%E3%81%AE%E4%BB%95%E7%B5%84%E3%81%BF" aria-hidden="true"></a> Let's Encrypt の仕組み</h3>
+<p data-line="56" class="code-line">Let's Encrypt は無料で SSL 証明書を発行してくれる認証局（CA）。</p>
+<p data-line="58" class="code-line"><strong>認証の流れ（HTTP-01チャレンジ）：</strong></p>
+<div class="code-block-container"><pre><code class="code-line" data-line="60">1. certbot が Let's Encrypt に「redash.sre-lab.click の証明書ください」と申請
+2. Let's Encrypt が「じゃあ http://redash.sre-lab.click/.well-known/acme-challenge/xxx にファイル置いて」と返す
+3. certbot がファイルを配置
+4. Let's Encrypt がアクセスして確認 → 本当にこのドメインの管理者だと証明
+5. 証明書発行！
+</code></pre></div><p data-line="68" class="code-line">だからポート80を外部公開しておく必要がある（Let's Encrypt のサーバーがアクセスしてくるから）。</p>
+<p data-line="70" class="code-line"><a href="https://letsencrypt.org/ja/docs/challenge-types/" target="_blank" rel="nofollow noopener noreferrer">チャレンジの種類 - Let's Encrypt</a></p>
+<hr data-line="72" class="code-line" />
+<h2 id="3.-%E4%BA%8B%E5%89%8D%E6%BA%96%E5%82%99" data-line="74" class="code-line"><a class="header-anchor-link" href="#3.-%E4%BA%8B%E5%89%8D%E6%BA%96%E5%82%99" aria-hidden="true"></a> 3. 事前準備</h2>
+<h3 id="%E3%83%89%E3%83%A1%E3%82%A4%E3%83%B3%E5%8F%96%E5%BE%97%EF%BC%88route-53%EF%BC%89" data-line="76" class="code-line"><a class="header-anchor-link" href="#%E3%83%89%E3%83%A1%E3%82%A4%E3%83%B3%E5%8F%96%E5%BE%97%EF%BC%88route-53%EF%BC%89" aria-hidden="true"></a> ドメイン取得（Route 53）</h3>
+<p data-line="78" class="code-line">AWS コンソールから Route 53 → ドメインの登録で取得。今回は <code>sre-lab.click</code>（$3/年）を選択。</p>
+<p data-line="80" class="code-line">取得完了するとホストゾーンが自動作成される。</p>
+<h3 id="terraform-%E3%81%A7%E3%82%A4%E3%83%B3%E3%83%95%E3%83%A9%E6%A7%8B%E7%AF%89" data-line="82" class="code-line"><a class="header-anchor-link" href="#terraform-%E3%81%A7%E3%82%A4%E3%83%B3%E3%83%95%E3%83%A9%E6%A7%8B%E7%AF%89" aria-hidden="true"></a> Terraform でインフラ構築</h3>
+<p data-line="84" class="code-line">VPC、サブネット、セキュリティグループ、EC2、Route 53 レコードを一括管理。</p>
+<p data-line="86" class="code-line"><strong>セキュリティグループのポイント：</strong></p>
+<div class="code-block-container"><pre class="language-hcl"><code class="language-hcl code-line" data-line="88"><span class="token comment"># SSH - 自分のIPのみ</span>
+<span class="token keyword">ingress</span> <span class="token punctuation">{</span>
+  <span class="token property">from_port</span>   <span class="token punctuation">=</span> <span class="token number">22</span>
+  <span class="token property">to_port</span>     <span class="token punctuation">=</span> <span class="token number">22</span>
+  <span class="token property">protocol</span>    <span class="token punctuation">=</span> <span class="token string">"tcp"</span>
+  <span class="token property">cidr_blocks</span> <span class="token punctuation">=</span> <span class="token punctuation">[</span><span class="token string">"xxx.xxx.xxx.xxx/32"</span><span class="token punctuation">]</span>
+<span class="token punctuation">}</span>
+
+<span class="token comment"># HTTP - Let's Encrypt認証用に全開放</span>
+<span class="token keyword">ingress</span> <span class="token punctuation">{</span>
+  <span class="token property">from_port</span>   <span class="token punctuation">=</span> <span class="token number">80</span>
+  <span class="token property">to_port</span>     <span class="token punctuation">=</span> <span class="token number">80</span>
+  <span class="token property">protocol</span>    <span class="token punctuation">=</span> <span class="token string">"tcp"</span>
+  <span class="token property">cidr_blocks</span> <span class="token punctuation">=</span> <span class="token punctuation">[</span><span class="token string">"0.0.0.0/0"</span><span class="token punctuation">]</span>
+<span class="token punctuation">}</span>
+
+<span class="token comment"># HTTPS - 本番アクセス用</span>
+<span class="token keyword">ingress</span> <span class="token punctuation">{</span>
+  <span class="token property">from_port</span>   <span class="token punctuation">=</span> <span class="token number">443</span>
+  <span class="token property">to_port</span>     <span class="token punctuation">=</span> <span class="token number">443</span>
+  <span class="token property">protocol</span>    <span class="token punctuation">=</span> <span class="token string">"tcp"</span>
+  <span class="token property">cidr_blocks</span> <span class="token punctuation">=</span> <span class="token punctuation">[</span><span class="token string">"0.0.0.0/0"</span><span class="token punctuation">]</span>
+<span class="token punctuation">}</span>
+</code></pre></div><p data-line="114" class="code-line">80番を全開放するのは、Let's Encrypt のサーバーがランダムな IP からアクセスしてくるため。</p>
+<p data-line="116" class="code-line"><strong>Route 53 レコード：</strong></p>
+<div class="code-block-container"><pre class="language-hcl"><code class="language-hcl code-line" data-line="118"><span class="token keyword">resource <span class="token type variable">"aws_route53_record"</span></span> <span class="token string">"redash"</span> <span class="token punctuation">{</span>
+  <span class="token property">zone_id</span> <span class="token punctuation">=</span> data.aws_route53_zone.main.zone_id
+  <span class="token property">name</span>    <span class="token punctuation">=</span> <span class="token string">"redash.sre-lab.click"</span>
+  <span class="token property">type</span>    <span class="token punctuation">=</span> <span class="token string">"A"</span>
+  <span class="token property">ttl</span>     <span class="token punctuation">=</span> <span class="token number">300</span>
+  <span class="token property">records</span> <span class="token punctuation">=</span> <span class="token punctuation">[</span>aws_instance.redash.public_ip<span class="token punctuation">]</span>
+<span class="token punctuation">}</span>
+</code></pre></div><p data-line="128" class="code-line"><code>terraform apply</code> で EC2 の Public IP が自動で DNS に登録される。</p>
+<hr data-line="130" class="code-line" />
+<h2 id="4.-%E5%AE%9F%E8%B7%B5%EF%BC%9Ahttps%E5%8C%96%E3%81%AE%E6%89%8B%E9%A0%86" data-line="132" class="code-line"><a class="header-anchor-link" href="#4.-%E5%AE%9F%E8%B7%B5%EF%BC%9Ahttps%E5%8C%96%E3%81%AE%E6%89%8B%E9%A0%86" aria-hidden="true"></a> 4. 実践：HTTPS化の手順</h2>
+<h3 id="step-1%3A-nginx-%26-certbot-%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB" data-line="134" class="code-line"><a class="header-anchor-link" href="#step-1%3A-nginx-%26-certbot-%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB" aria-hidden="true"></a> Step 1: nginx &amp; certbot インストール</h3>
+<div class="code-block-container"><pre class="language-bash"><code class="language-bash code-line" data-line="136"><span class="token function">sudo</span> dnf <span class="token function">install</span> <span class="token parameter variable">-y</span> nginx certbot python3-certbot-nginx
+</code></pre></div><h3 id="step-2%3A-nginx-%E8%A8%AD%E5%AE%9A%EF%BC%88%E3%81%BE%E3%81%9A-http-%E3%81%A7%E7%96%8E%E9%80%9A%E7%A2%BA%E8%AA%8D%EF%BC%89" data-line="140" class="code-line"><a class="header-anchor-link" href="#step-2%3A-nginx-%E8%A8%AD%E5%AE%9A%EF%BC%88%E3%81%BE%E3%81%9A-http-%E3%81%A7%E7%96%8E%E9%80%9A%E7%A2%BA%E8%AA%8D%EF%BC%89" aria-hidden="true"></a> Step 2: nginx 設定（まず HTTP で疎通確認）</h3>
+<div class="code-block-container"><pre class="language-bash"><code class="language-bash code-line" data-line="142"><span class="token function">sudo</span> <span class="token function">tee</span> /etc/nginx/conf.d/redash.conf <span class="token operator">&lt;&lt;</span> <span class="token string">'EOF'
+server {
+    listen 80;
+    server_name redash.sre-lab.click;
+
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF</span>
+</code></pre></div><p data-line="159" class="code-line"><strong>設定の意味：</strong></p>
+<table data-line="161" class="code-line">
+<thead data-line="161" class="code-line">
+<tr data-line="161" class="code-line">
+<th>行</th>
+<th>意味</th>
+</tr>
+</thead>
+<tbody data-line="163" class="code-line">
+<tr data-line="163" class="code-line">
+<td><code>listen 80</code></td>
+<td>ポート80で待ち受け</td>
+</tr>
+<tr data-line="164" class="code-line">
+<td><code>server_name</code></td>
+<td>このドメイン宛のリクエストを処理</td>
+</tr>
+<tr data-line="165" class="code-line">
+<td><code>location /</code></td>
+<td>全てのパスが対象</td>
+</tr>
+<tr data-line="166" class="code-line">
+<td><code>proxy_pass</code></td>
+<td>Redash（5000番）に転送</td>
+</tr>
+</tbody>
+</table>
+<div class="code-block-container"><pre class="language-bash"><code class="language-bash code-line" data-line="168"><span class="token function">sudo</span> nginx <span class="token parameter variable">-t</span>          <span class="token comment"># 文法チェック</span>
+<span class="token function">sudo</span> systemctl start nginx
+<span class="token function">sudo</span> systemctl <span class="token builtin class-name">enable</span> nginx
+</code></pre></div><h3 id="step-3%3A-http-%E7%96%8E%E9%80%9A%E7%A2%BA%E8%AA%8D" data-line="174" class="code-line"><a class="header-anchor-link" href="#step-3%3A-http-%E7%96%8E%E9%80%9A%E7%A2%BA%E8%AA%8D" aria-hidden="true"></a> Step 3: HTTP 疎通確認</h3>
+<div class="code-block-container"><pre class="language-bash"><code class="language-bash code-line" data-line="176"><span class="token function">curl</span> <span class="token parameter variable">-I</span> http://localhost
+<span class="token comment"># HTTP/1.1 200 OK が返ればOK</span>
+</code></pre></div><h3 id="step-4%3A-certbot-%E3%81%A7%E8%A8%BC%E6%98%8E%E6%9B%B8%E5%8F%96%E5%BE%97" data-line="181" class="code-line"><a class="header-anchor-link" href="#step-4%3A-certbot-%E3%81%A7%E8%A8%BC%E6%98%8E%E6%9B%B8%E5%8F%96%E5%BE%97" aria-hidden="true"></a> Step 4: certbot で証明書取得</h3>
+<div class="code-block-container"><pre class="language-bash"><code class="language-bash code-line" data-line="183"><span class="token function">sudo</span> certbot <span class="token parameter variable">--nginx</span> <span class="token parameter variable">-d</span> redash.sre-lab.click
+</code></pre></div><p data-line="187" class="code-line">対話形式で進む：</p>
+<ol data-line="189" class="code-line">
+<li data-line="189" class="code-line">メールアドレス入力（更新通知用）</li>
+<li data-line="190" class="code-line">利用規約に同意（Y）</li>
+<li data-line="191" class="code-line">ニュースレター購読（N でOK）</li>
+</ol>
+<p data-line="193" class="code-line">成功すると：</p>
+<div class="code-block-container"><pre><code class="code-line" data-line="195">Successfully received certificate.
+Certificate is saved at: /etc/letsencrypt/live/redash.sre-lab.click/fullchain.pem
+Key is saved at:         /etc/letsencrypt/live/redash.sre-lab.click/privkey.pem
+</code></pre></div><h3 id="step-5%3A-%E8%87%AA%E5%8B%95%E3%81%A7%E6%9B%B8%E3%81%8D%E6%8F%9B%E3%82%8F%E3%81%A3%E3%81%9F%E8%A8%AD%E5%AE%9A%E3%82%92%E7%A2%BA%E8%AA%8D" data-line="201" class="code-line"><a class="header-anchor-link" href="#step-5%3A-%E8%87%AA%E5%8B%95%E3%81%A7%E6%9B%B8%E3%81%8D%E6%8F%9B%E3%82%8F%E3%81%A3%E3%81%9F%E8%A8%AD%E5%AE%9A%E3%82%92%E7%A2%BA%E8%AA%8D" aria-hidden="true"></a> Step 5: 自動で書き換わった設定を確認</h3>
+<p data-line="203" class="code-line">certbot が nginx 設定を自動更新してくれる：</p>
+<div class="code-block-container"><pre class="language-nginx"><code class="language-nginx code-line" data-line="205"><span class="token comment"># HTTPS用（certbotが追加）</span>
+<span class="token directive"><span class="token keyword">server</span></span> <span class="token punctuation">{</span>
+    <span class="token directive"><span class="token keyword">server_name</span> redash.sre-lab.click</span><span class="token punctuation">;</span>
+    <span class="token directive"><span class="token keyword">location</span> /</span> <span class="token punctuation">{</span> ... <span class="token punctuation">}</span>  <span class="token comment"># 元のまま</span>
+
+    <span class="token directive"><span class="token keyword">listen</span> <span class="token number">443</span> ssl</span><span class="token punctuation">;</span>
+    <span class="token directive"><span class="token keyword">ssl_certificate</span> /etc/letsencrypt/live/redash.sre-lab.click/fullchain.pem</span><span class="token punctuation">;</span>
+    <span class="token directive"><span class="token keyword">ssl_certificate_key</span> /etc/letsencrypt/live/redash.sre-lab.click/privkey.pem</span><span class="token punctuation">;</span>
+    <span class="token directive"><span class="token keyword">include</span> /etc/letsencrypt/options-ssl-nginx.conf</span><span class="token punctuation">;</span>
+    <span class="token directive"><span class="token keyword">ssl_dhparam</span> /etc/letsencrypt/ssl-dhparams.pem</span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+
+<span class="token comment"># HTTPリダイレクト用（certbotが追加）</span>
+<span class="token directive"><span class="token keyword">server</span></span> <span class="token punctuation">{</span>
+    <span class="token directive"><span class="token keyword">listen</span> <span class="token number">80</span></span><span class="token punctuation">;</span>
+    <span class="token directive"><span class="token keyword">server_name</span> redash.sre-lab.click</span><span class="token punctuation">;</span>
+
+    <span class="token directive"><span class="token keyword">if</span> (<span class="token variable">$host</span> = redash.sre-lab.click)</span> <span class="token punctuation">{</span>
+        <span class="token directive"><span class="token keyword">return</span> <span class="token number">301</span> https://<span class="token variable">$host</span><span class="token variable">$request_uri</span></span><span class="token punctuation">;</span>
+    <span class="token punctuation">}</span>
+    <span class="token directive"><span class="token keyword">return</span> <span class="token number">404</span></span><span class="token punctuation">;</span>
+<span class="token punctuation">}</span>
+</code></pre></div><p data-line="230" class="code-line"><strong>追加された内容：</strong></p>
+<table data-line="232" class="code-line">
+<thead data-line="232" class="code-line">
+<tr data-line="232" class="code-line">
+<th>設定</th>
+<th>役割</th>
+</tr>
+</thead>
+<tbody data-line="234" class="code-line">
+<tr data-line="234" class="code-line">
+<td><code>listen 443 ssl</code></td>
+<td>HTTPS で待ち受け</td>
+</tr>
+<tr data-line="235" class="code-line">
+<td><code>ssl_certificate</code></td>
+<td>証明書ファイルの場所</td>
+</tr>
+<tr data-line="236" class="code-line">
+<td><code>ssl_certificate_key</code></td>
+<td>秘密鍵の場所</td>
+</tr>
+<tr data-line="237" class="code-line">
+<td>2つ目の server ブロック</td>
+<td>HTTP → HTTPS 自動リダイレクト</td>
+</tr>
+</tbody>
+</table>
+<hr data-line="239" class="code-line" />
+<h2 id="5.-%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D-%26-%E3%83%88%E3%83%A9%E3%83%96%E3%83%AB%E3%82%B7%E3%83%A5%E3%83%BC%E3%83%86%E3%82%A3%E3%83%B3%E3%82%B0" data-line="241" class="code-line"><a class="header-anchor-link" href="#5.-%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D-%26-%E3%83%88%E3%83%A9%E3%83%96%E3%83%AB%E3%82%B7%E3%83%A5%E3%83%BC%E3%83%86%E3%82%A3%E3%83%B3%E3%82%B0" aria-hidden="true"></a> 5. 動作確認 &amp; トラブルシューティング</h2>
+<h3 id="%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D" data-line="243" class="code-line"><a class="header-anchor-link" href="#%E5%8B%95%E4%BD%9C%E7%A2%BA%E8%AA%8D" aria-hidden="true"></a> 動作確認</h3>
+<p data-line="245" class="code-line">ブラウザで <code>https://redash.sre-lab.click</code> にアクセス。🔒 鍵マークが表示されれば成功！</p>
+<p data-line="247" class="code-line"><strong>コマンドラインで確認する場合：</strong></p>
+<div class="code-block-container"><pre class="language-bash"><code class="language-bash code-line" data-line="249"><span class="token function">curl</span> <span class="token parameter variable">-I</span> https://redash.sre-lab.click
+<span class="token comment"># HTTP/2 200 が返ればOK</span>
+</code></pre></div><h3 id="%E3%82%88%E3%81%8F%E3%81%82%E3%82%8B%E3%82%A8%E3%83%A9%E3%83%BC%E3%81%A8%E5%AF%BE%E5%87%A6" data-line="254" class="code-line"><a class="header-anchor-link" href="#%E3%82%88%E3%81%8F%E3%81%82%E3%82%8B%E3%82%A8%E3%83%A9%E3%83%BC%E3%81%A8%E5%AF%BE%E5%87%A6" aria-hidden="true"></a> よくあるエラーと対処</h3>
+<h4 id="%E8%A8%BC%E6%98%8E%E6%9B%B8%E5%8F%96%E5%BE%97%E3%81%AB%E5%A4%B1%E6%95%97%E3%81%99%E3%82%8B" data-line="256" class="code-line"><a class="header-anchor-link" href="#%E8%A8%BC%E6%98%8E%E6%9B%B8%E5%8F%96%E5%BE%97%E3%81%AB%E5%A4%B1%E6%95%97%E3%81%99%E3%82%8B" aria-hidden="true"></a> 証明書取得に失敗する</h4>
+<div class="code-block-container"><pre><code class="code-line" data-line="258">Challenge failed for domain redash.sre-lab.click
+</code></pre></div><p data-line="262" class="code-line"><strong>原因と対処：</strong></p>
+<table data-line="264" class="code-line">
+<thead data-line="264" class="code-line">
+<tr data-line="264" class="code-line">
+<th>原因</th>
+<th>対処</th>
+</tr>
+</thead>
+<tbody data-line="266" class="code-line">
+<tr data-line="266" class="code-line">
+<td>ポート80が閉じている</td>
+<td>セキュリティグループで <code>0.0.0.0/0</code> を許可</td>
+</tr>
+<tr data-line="267" class="code-line">
+<td>DNS が浸透していない</td>
+<td><code>ping redash.sre-lab.click</code> で IP 確認、数分待つ</td>
+</tr>
+<tr data-line="268" class="code-line">
+<td>nginx が起動していない</td>
+<td><code>sudo systemctl status nginx</code> で確認</td>
+</tr>
+</tbody>
+</table>
+<h4 id="502-bad-gateway" data-line="270" class="code-line"><a class="header-anchor-link" href="#502-bad-gateway" aria-hidden="true"></a> 502 Bad Gateway</h4>
+<p data-line="272" class="code-line">nginx は動いてるが、転送先（Redash）に繋がらない。</p>
+<div class="code-block-container"><pre class="language-bash"><code class="language-bash code-line" data-line="274"><span class="token comment"># Redash が起動しているか確認</span>
+<span class="token function">sudo</span> <span class="token function">docker-compose</span> <span class="token function">ps</span>
+
+<span class="token comment"># 全コンテナが Up になっているか</span>
+<span class="token comment"># Restarting が続いていたら logs を確認</span>
+<span class="token function">sudo</span> <span class="token function">docker-compose</span> logs server
+</code></pre></div><h4 id="%E3%83%A1%E3%83%A2%E3%83%AA%E4%B8%8D%E8%B6%B3%E3%81%A7%E3%83%95%E3%83%AA%E3%83%BC%E3%82%BA" data-line="283" class="code-line"><a class="header-anchor-link" href="#%E3%83%A1%E3%83%A2%E3%83%AA%E4%B8%8D%E8%B6%B3%E3%81%A7%E3%83%95%E3%83%AA%E3%83%BC%E3%82%BA" aria-hidden="true"></a> メモリ不足でフリーズ</h4>
+<p data-line="285" class="code-line">Redash は推奨 4GB 以上。t3a.small（2GB）だと起動時にフリーズすることがある。</p>
+<div class="code-block-container"><pre class="language-bash"><code class="language-bash code-line" data-line="287"><span class="token function">free</span> <span class="token parameter variable">-h</span>  <span class="token comment"># メモリ確認</span>
+<span class="token comment"># available が 1GB 以下なら厳しい</span>
+</code></pre></div><p data-line="292" class="code-line"><strong>対処：</strong> t3a.medium（4GB）以上にインスタンスタイプを変更。</p>
+<hr data-line="294" class="code-line" />
+<h2 id="6.-%E3%81%BE%E3%81%A8%E3%82%81" data-line="296" class="code-line"><a class="header-anchor-link" href="#6.-%E3%81%BE%E3%81%A8%E3%82%81" aria-hidden="true"></a> 6. まとめ</h2>
+<h3 id="%E5%AD%A6%E3%82%93%E3%81%A0%E3%81%93%E3%81%A8" data-line="298" class="code-line"><a class="header-anchor-link" href="#%E5%AD%A6%E3%82%93%E3%81%A0%E3%81%93%E3%81%A8" aria-hidden="true"></a> 学んだこと</h3>
+<ul data-line="300" class="code-line">
+<li data-line="300" class="code-line"><strong>nginx のリバースプロキシ</strong>：HTTPS 非対応のアプリの前に置いて SSL 終端する構成</li>
+<li data-line="301" class="code-line"><strong>Let's Encrypt の認証フロー</strong>：HTTP-01 チャレンジでドメイン所有を証明</li>
+<li data-line="302" class="code-line"><strong>certbot の便利さ</strong>：nginx 設定を自動で書き換えてくれる</li>
+<li data-line="303" class="code-line"><strong>ポート設計の意図</strong>：80 番を開けるのは Let's Encrypt 認証のため</li>
+</ul>
+<h3 id="%E6%A7%8B%E6%88%90%E3%81%AE%E5%85%A8%E4%BD%93%E5%83%8F%EF%BC%88%E5%86%8D%E6%8E%B2%EF%BC%89" data-line="305" class="code-line"><a class="header-anchor-link" href="#%E6%A7%8B%E6%88%90%E3%81%AE%E5%85%A8%E4%BD%93%E5%83%8F%EF%BC%88%E5%86%8D%E6%8E%B2%EF%BC%89" aria-hidden="true"></a> 構成の全体像（再掲）</h3>
+<div class="code-block-container"><pre><code class="code-line" data-line="307">ブラウザ
+  ↓ HTTPS (443)
+nginx（SSL終端 + HTTPリダイレクト）
+  ↓ HTTP (5000)
+Redash（Docker Compose）
+  ├─ server
+  ├─ scheduler
+  ├─ worker
+  ├─ PostgreSQL
+  └─ Redis
+</code></pre></div><h3 id="%E6%9C%AC%E7%95%AA%E9%81%8B%E7%94%A8%E3%81%A8%E3%81%AE%E9%81%95%E3%81%84" data-line="320" class="code-line"><a class="header-anchor-link" href="#%E6%9C%AC%E7%95%AA%E9%81%8B%E7%94%A8%E3%81%A8%E3%81%AE%E9%81%95%E3%81%84" aria-hidden="true"></a> 本番運用との違い</h3>
+<p data-line="322" class="code-line">今回の構成は学習目的だが、社内ツール用途ならほぼこのまま使える。</p>
+<table data-line="324" class="code-line">
+<thead data-line="324" class="code-line">
+<tr data-line="324" class="code-line">
+<th>観点</th>
+<th>今回（学習）</th>
+<th>本番（社内ツール）</th>
+</tr>
+</thead>
+<tbody data-line="326" class="code-line">
+<tr data-line="326" class="code-line">
+<td>SSL 証明書</td>
+<td>Let's Encrypt</td>
+<td>Let's Encrypt（同じ）</td>
+</tr>
+<tr data-line="327" class="code-line">
+<td>リバースプロキシ</td>
+<td>nginx</td>
+<td>nginx（同じ）</td>
+</tr>
+<tr data-line="328" class="code-line">
+<td>DB</td>
+<td>Docker 内 PostgreSQL</td>
+<td><strong>RDS</strong>（移行済み）</td>
+</tr>
+<tr data-line="329" class="code-line">
+<td>コンテナ</td>
+<td>EC2 + Docker Compose</td>
+<td>EC2 + Docker Compose or ECS + EC2</td>
+</tr>
+</tbody>
+</table>
+<p data-line="331" class="code-line">社内ユーザー限定・頻繁なデプロイなし・障害時は手動復旧で許容できるなら、ALB + ACM + Fargate はコスト的にオーバーキル。</p>
+<p data-line="333" class="code-line"><strong>DB だけは RDS 推奨</strong>：バックアップ、障害復旧、メンテナンスが圧倒的に楽になる。</p>
+<h3 id="%E6%AC%A1%E3%81%AE%E3%82%B9%E3%83%86%E3%83%83%E3%83%97" data-line="335" class="code-line"><a class="header-anchor-link" href="#%E6%AC%A1%E3%81%AE%E3%82%B9%E3%83%86%E3%83%83%E3%83%97" aria-hidden="true"></a> 次のステップ</h3>
+<ul data-line="337" class="code-line">
+<li data-line="337" class="code-line">RDS 移行：DB を Docker 外に出して耐障害性向上</li>
+<li data-line="338" class="code-line">ECS Fargate 化：EC2 管理をなくす</li>
+<li data-line="339" class="code-line">CloudWatch 監視：証明書期限、ディスク使用率などをアラート設定</li>
+</ul>
+<hr data-line="341" class="code-line" />
+<h2 id="%E8%87%AA%E5%88%86%E3%83%A1%E3%83%A2" data-line="343" class="code-line"><a class="header-anchor-link" href="#%E8%87%AA%E5%88%86%E3%83%A1%E3%83%A2" aria-hidden="true"></a> 自分メモ</h2>
+<h3 id="%E3%83%8F%E3%83%9E%E3%81%A3%E3%81%9F%E3%83%9D%E3%82%A4%E3%83%B3%E3%83%88%EF%BC%9A" data-line="345" class="code-line"><a class="header-anchor-link" href="#%E3%83%8F%E3%83%9E%E3%81%A3%E3%81%9F%E3%83%9D%E3%82%A4%E3%83%B3%E3%83%88%EF%BC%9A" aria-hidden="true"></a> ハマったポイント：</h3>
+<ul data-line="347" class="code-line">
+<li data-line="347" class="code-line">ポート80（http）も全開放する必要がある点で少しハマった。Let's EncryptのサーバーがどのIPからアクセスしてくるかわからないため、開けておく必要がある。</li>
+<li data-line="348" class="code-line">Redash が意外と多くのメモリを必要とした点も少しハマった。最初はt3a.microやt3a.smallで試行錯誤していたが、どうもコンテナ起動時や操作時にフリーズしてしまって不具合が発生することが多く、t3a.mediumに変更したら解決した。</li>
+</ul>
+<h3 id="%E6%AC%A1%E5%9B%9E%E6%B0%97%E3%82%92%E3%81%A4%E3%81%91%E3%82%8B%E3%81%93%E3%81%A8%EF%BC%9A" data-line="350" class="code-line"><a class="header-anchor-link" href="#%E6%AC%A1%E5%9B%9E%E6%B0%97%E3%82%92%E3%81%A4%E3%81%91%E3%82%8B%E3%81%93%E3%81%A8%EF%BC%9A" aria-hidden="true"></a> 次回気をつけること：</h3>
+<ul data-line="352" class="code-line">
+<li data-line="352" class="code-line">公式ドキュメントやコミュニティの情報を確認し、推奨スペックにあたりをつけてから構築する</li>
+</ul>
+<h3 id="%E9%96%A2%E9%80%A3%E3%81%97%E3%81%A6%E6%B0%97%E3%81%AB%E3%81%AA%E3%82%8B%E3%81%93%E3%81%A8%EF%BC%9A" data-line="354" class="code-line"><a class="header-anchor-link" href="#%E9%96%A2%E9%80%A3%E3%81%97%E3%81%A6%E6%B0%97%E3%81%AB%E3%81%AA%E3%82%8B%E3%81%93%E3%81%A8%EF%BC%9A" aria-hidden="true"></a> 関連して気になること：</h3>
+<ul data-line="356" class="code-line">
+<li data-line="356" class="code-line">ECS + EC2などの構成にできると、比較的コストは抑えつつコンテナ自動復旧やデプロイ、スケーリングの自動化、ログ管理などが少しやりやすくなるみたい。ECS + Fargateにできるのがメンテナンスコスト面では最強だが、その分金銭的コストがかさんでしまうのでそのあたりのバランスを考慮したインフラ設計ができるようになりたい。</li>
+</ul>
